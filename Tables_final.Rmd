@@ -1,0 +1,286 @@
+---
+title: "Tables"
+author: "Anna Calderon"
+date: "2023-11-17"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(flextable)
+```
+
+
+```{r, include=F}
+oud_est_data <- readRDS("output_df_ODF.rds")
+rownames(oud_est_data) <- NULL
+
+medicaid_population <- read.csv("medicaid_population.csv") |> 
+  select(-X) |> 
+  mutate(Year = as.character(Year))
+
+oud_est_data <- oud_est_data %>%
+  left_join(medicaid_population, by = c("Community", "Year", "Age", "Sex")) |> 
+  mutate(p_DM2 = (p_DM*Population)/medicaid_pop,
+         p_OUD = p_DM+p_U_mean+p_DNM_mean,
+         p_OUD_ub = p_DM+p_U_ub+p_DNM_ub,
+         p_OUD_lb = p_DM+p_U_lb+p_DNM_lb,
+         p_OUD_se = p_DNM_sd+p_U_sd,
+         p_U_se = p_U_sd,
+         p_U = p_U_mean)
+
+
+```
+
+```{r, include=F}
+options(scipen=999)
+county_est <- oud_est_data %>%
+  group_by(Community, Year) %>%
+  dplyr::summarise(p_DM = sum(p_DM*Population)/sum(Population), 
+            #replace pop with medicaid pop
+            #add a caption to the green heatmap to mention the change
+            p_DM2 = sum(p_DM*Population)/sum(medicaid_pop),
+            p_Tb = sum(p_Tb*Population)/sum(Population),
+            p_ODF = sum(n_ODF)/sum(Population),
+            p_U = sum(p_U_mean*Population)/sum(Population),
+            p_OUD = sum(p_OUD*Population)/sum(Population),
+            p_OUD_lb = sum(p_OUD_lb*Population)/sum(Population),
+            p_OUD_ub = sum(p_OUD_ub*Population)/sum(Population),
+            p_OUD_se = sum(p_OUD_se*Population)/sum(Population),
+            Population = sum(Population),
+            p_U_se = sum(p_U_se*Population)/sum(Population))
+
+ny_counties <- map_data("county","new york") %>%
+  mutate(Community = str_to_title(subregion))%>%
+  select(long, lat, group, Community)%>%
+  mutate(Community=ifelse(Community=="St Lawrence","St. Lawrence", Community))
+ny_counties <- ny_counties[!(ny_counties$Community %in% c("Bronx","Kings","Queens","New York","Richmond")),]
+
+label_data <- ny_counties %>%
+  group_by(Community) %>%
+  summarise(long=mean(long),lat=mean(lat))
+
+county_map <- ny_counties %>%
+  left_join(county_est)
+```
+## TABLE 1: Original
+
+```{r echo=FALSE}
+
+table_a <- county_est |> 
+  select(Community, Year, p_DM2, p_Tb, p_ODF, p_U, p_OUD) |> 
+  group_by(Community) |> 
+  summarise(
+    `Diagnosed in Medicaid` = mean(p_DM2),
+    `Buprenorphine Prescription in PDMP` = mean(p_Tb),
+    `Fatal Overdoses` = mean(p_ODF),
+    `Model implied unobserved OUD` = mean(p_U),
+    `Model implied OUD` = mean(p_OUD)
+  ) |> 
+  pivot_longer(2:6,
+               names_to = "Variable",
+               values_to = "Value"
+  ) |> 
+  ungroup() |> 
+  #mutate(Variable = factor(Variable, ordered = TRUE)) |> 
+  group_by(Variable) |> 
+  summarise(
+    Average = mean(Value),
+    SD = sd(Value),
+    Min = min(Value),
+    P25 = quantile(Value, probs = .25),
+    P50 = quantile(Value, probs = .50),
+    P75 = quantile(Value, probs = .75),
+    Max = max(Value)
+  ) |> 
+  mutate(across(
+    2:8, ~ (scales::percent(., scale = 100, accuracy = 0.1))
+  ))
+
+
+table_a |> 
+  flextable::flextable() |> 
+  flextable::bg(bg =  "steelblue", part = "header") |> 
+  #flextable::border(border.top = fp_border(color = "black")) |> 
+  flextable::bold(i=1, part = "header") 
+```
+
+## TABLE 1: Grouped by year
+```{r include=FALSE}
+get_table <- function(yyear){
+  table_a <- county_est |> 
+  select(Community, Year, p_DM2, p_Tb, p_ODF, p_U, p_OUD) |> 
+  filter(Year == yyear) |> 
+  group_by(Community) |> 
+  summarise(
+    `Diagnosed in Medicaid` = mean(p_DM2),
+    `Buprenorphine Prescription in PDMP` = mean(p_Tb),
+    `Fatal Overdoses (Rate per 100K)` = mean(p_ODF),
+    `Model implied unobserved OUD` = mean(p_U),
+    `Model implied OUD` = mean(p_OUD)
+  ) |> 
+  pivot_longer(2:6,
+               names_to = "Variable",
+               values_to = "Value"
+  ) |> 
+  ungroup() |> 
+  #mutate(Variable = factor(Variable, ordered = TRUE)) |> 
+  group_by(Variable) |> 
+  summarise(
+    `Average %` = mean(Value),
+    SD = sd(Value),
+    Min = min(Value),
+    P25 = quantile(Value, probs = .25),
+    P50 = quantile(Value, probs = .50),
+    P75 = quantile(Value, probs = .75),
+    Max = max(Value)
+  ) |> 
+  mutate(
+    Year = rep(yyear)
+  ) |> 
+  select(Variable, Year, everything()) 
+
+  table1 <- table_a[1:2,] |> 
+      mutate(across(
+    3:9, ~ (scales::percent(., scale = 100, accuracy = 0.1))
+  ))
+  
+  table2 <- table_a[3,] |> 
+    mutate(across(
+    3:9, ~ as.character(round(.*100000, 1))
+  ))
+  table3 <- table_a[4:5,] |> 
+    mutate(across(
+    3:9, ~ (scales::percent(., scale = 100, accuracy = 0.1))
+  ))
+  
+  table_final <- rbind(table1, table2, table3)
+  
+  print(table_final)
+}
+
+table_2017 <- get_table("2017")
+table_2018 <- get_table("2018")
+table_2019 <- get_table("2019")
+
+
+
+```
+
+```{r echo=FALSE}
+
+table1_final <- rbind(table_2017, table_2018, table_2019) |> 
+  arrange(Variable,Year)
+
+    
+flextable::flextable(table1_final) |> 
+  merge_v(j="Variable") |> 
+  flextable::bg(bg =  "steelblue", part = "header") |>
+  theme_box()
+
+```
+
+
+## TABLE 1: Grouped by community and year
+```{r include=FALSE}
+get_table <- function(yyear, community){
+  
+  table_a <- county_est |> 
+  select(Community, Year, p_DM2, p_Tb, p_ODF, p_U, p_OUD) |> 
+  filter(Year == yyear) |> 
+  filter(Community == community) |> 
+  summarise(
+    `Diagnosed in Medicaid` = mean(p_DM2),
+    `Buprenorphine Prescription in PDMP` = mean(p_Tb),
+    `Fatal Overdoses` = mean(p_ODF),
+    `Model implied unobserved OUD` = mean(p_U),
+    `Model implied OUD` = mean(p_OUD)
+  ) |> 
+  pivot_longer(2:6,
+               names_to = "Variable",
+               values_to = "Value"
+  ) |> 
+  ungroup() |> 
+  summarise(
+    `Average %` = mean(Value),
+    SD = sd(Value),
+    Min = min(Value),
+    P25 = quantile(Value, probs = .25),
+    P50 = quantile(Value, probs = .50),
+    P75 = quantile(Value, probs = .75),
+    Max = max(Value)
+  ) |> 
+  mutate(
+    Community = rep(community),
+    Year = rep(yyear)
+  ) |> 
+  select(Community, Year, everything()) |> 
+  mutate(across(
+    3:9, ~ (scales::percent(., scale = 100, accuracy = 0.1))
+  ))
+  print(table_a)
+}
+
+get_table("2017", "Albany")
+```
+
+```{r include=FALSE}
+
+tables_2017 <- list()
+for (i in unique(county_est$Community)) {
+  tables_2017[[i]] <- get_table("2017", i)
+}
+tables_2017 <- do.call("rbind", tables_2017)
+
+#colnames(tables_2017) <-gsub(".*\\.", "", colnames(tables_2017))  
+
+tables_2018 <- list()
+for (i in unique(county_est$Community)) {
+  tables_2018[[i]] <- get_table("2018", i)
+}
+tables_2018 <- do.call("rbind", tables_2018)
+
+
+tables_2019 <- list()
+for (i in unique(county_est$Community)) {
+  tables_2019[[i]] <- get_table("2019", i)
+}
+tables_2019 <- do.call("rbind", tables_2019)
+
+
+  
+
+```
+
+```{r echo=FALSE}
+merge_custom <- function(ft, x, columns){
+  z <- rle(x)
+  rows_at <- cumsum(z$lengths) - z$lengths + 1
+
+  for(i in seq_along(rows_at)){
+    for(j in columns)
+      ft <- flextable:merge_at(x = ft, i = seq( rows_at[i], rows_at[i] + z$lengths[i] - 1), j = j)
+  }
+
+  ft
+}
+
+table1_final <- rbind(tables_2017, tables_2018, tables_2019) |> 
+  arrange(Community, Year)
+
+    
+flextable::flextable(table1_final) |> 
+  merge_v(j="Community") |> 
+  flextable::bg(bg =  "steelblue", part = "header") |>
+  theme_box()
+```
+
+
+
+
