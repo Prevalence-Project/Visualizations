@@ -3,9 +3,7 @@
 ## Manuscript Figures 
 
 ### Figure 1
-![image](https://github.com/Prevalence-Project/Visualizations/assets/52983514/7323c617-8d0a-474c-a9fa-e5701ac956d0)
-
-<img src="[https://your-image-url.type](https://github.com/Prevalence-Project/Visualizations/assets/52983514/7323c617-8d0a-474c-a9fa-e5701ac956d0)https://github.com/Prevalence-Project/Visualizations/assets/52983514/7323c617-8d0a-474c-a9fa-e5701ac956d0" width="250" height="250">
+<img src="https://github.com/Prevalence-Project/Visualizations/assets/52983514/01143810-00e8-4d44-8044-115fc04b0df6" width=50% height=49%> <img src="https://github.com/Prevalence-Project/Visualizations/assets/52983514/91742440-cb24-4997-8122-74c4e2057ae4" width=50% height=49% float= left> 
 
 
 ### Figure 2
