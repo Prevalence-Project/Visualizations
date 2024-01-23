@@ -105,11 +105,11 @@ ny_counties |>
     plot.title = element_text(size=13, hjust = 0),
         plot.subtitle = element_text(size = 12, hjust=0),
         legend.title = element_text(size = 8),
-    plot.caption = element_text(size = 6, color = "gray33"),
+    plot.caption = element_text(size = 7, color = "gray33"),
     legend.text=element_text(size=7))+
   scale_fill_gradient(name = "", low="white",high="dark blue",limits=c(0,0.087), 
                       labels = scales::percent)+
-  labs(title="OUD Prevalence Estimation (p_OUD) Heatmap",
+  labs(title="Estimated OUD Prevalence",
        subtitle = "Three-year average",
        caption = "The denominator for this rate is the total county population between the ages 18-64",
        x="",y="") 
@@ -138,13 +138,12 @@ ny_counties |>
     legend.text=element_text(size=7))+
   scale_fill_gradient(name = "", low="white",high="dark green",limits=c(0.008,0.06), 
                       labels = scales::percent)+
-  labs(title="Diagnosed OUD in Medicaid (p_DM) Heatmap",
+  labs(title="Diagnosed OUD in Medicaid",
        subtitle = "Three-year average",
        caption = "The denominator for this rate is the Medicaid population between the ages 18-64",
        x="",y="")
 ```
 ## Figure 2
-
 ```{r warning=FALSE, message=FALSE}
 oud_est_data |> 
   mutate(Age = paste0("Ages ", Age)) |> 
@@ -207,7 +206,6 @@ oud_est_data |>
 
 ```
 
-
 ## Figure 3
 ```{r}
 # p_OUD
@@ -244,7 +242,7 @@ ggplot(county_map, aes(long, lat))+
     )+
   scale_fill_gradient(name = "", low="white",high="dark Blue",limits=c(0,0.087), 
                       labels = scales::percent)+
-  labs(title="OUD Prevalence Estimation (p_OUD) Heatmaps for 3 Years",
+  labs(title="Estimated OUD Prevalence by Year",
        x="",y="") +
   geom_polygon(data = increasing_oud_data, 
                mapping = aes(group=group, x=long , y=lat, color='Increasing' ),
@@ -264,8 +262,14 @@ x <- county_map |>
 
 
 ```
+
 ## Figure 4
 ```{r}
+county_map |> 
+  select(Community, Year, p_U, p_OUD) |> 
+  distinct(Community, Year, p_U, p_OUD) |> 
+  mutate(undiagnosed = p_U/p_OUD) |>  
+
 page4_top <- ggplot(county_map, aes(long, lat))+
   geom_polygon(aes(fill=p_U/p_OUD, group=group), color="white")+
   facet_wrap(~Year,nrow= 1)+
@@ -286,7 +290,7 @@ page4_top <- ggplot(county_map, aes(long, lat))+
     )+
   scale_fill_gradient(name = "", low="white",high="dark blue",limits=c(0.15,0.665), 
                       labels = scales::percent)+
-  labs(title="Undiagosed OUD Among Total OUD (p_U/p_OUD) Heatmaps for 3 Years",
+  labs(title="Undiagnosed OUD Among Total OUD by Year",
        x="",y="") 
 
 
@@ -310,7 +314,7 @@ page4_middle <- ggplot(county_map, aes(long, lat))+
     )+
   scale_fill_gradient(name = "", low="white",high="dark red",limits=c(0,0.0007), 
                       labels = scales::percent)+
-  labs(title="Overdose Deaths (p_ODF) Heatmaps for 3 Years",
+  labs(title="Overdose Deaths by Year",
        x="",y="") 
 
 page4_bottom <- ggplot(county_map, aes(long, lat))+
@@ -334,7 +338,7 @@ page4_bottom <- ggplot(county_map, aes(long, lat))+
   scale_fill_gradient(name = "", low="white",high="dark green",limits=c(0,0.021),
                       #breaks=c(0,0.1, 0.2),
                       labels = scales::percent) +
-  labs(title="Buprenorphine Prescriptions (p_Tb) Heatmaps for 3 Years",
+  labs(title="Buprenorphine Prescriptions by Year",
        x="",y="")
 
 page4_top
@@ -347,7 +351,8 @@ x <- county_map |>
   distinct()
   
 ```
-# Figure 5
+
+##Figure 5
 ```{r}
 per_capita_income_est <- readRDS("per_capita_income_est.RDS")
 
@@ -368,7 +373,7 @@ ggplot(sociodem_data,aes(x=Income))+
         plot.title = element_text(hjust = 0, size = 13),
         plot.subtitle = element_text(hjust=0, size=10),
        plot.caption = element_text(size=7, color = "gray33"))+
-  labs(title="Income vs. Rate Ratio of Undiagnnosed OUD",
+  labs(title="Income vs. Rate Ratio of Undiagnosed OUD",
        caption = "Each point represents one county per year") +
   xlab("Per Capita Income")+
   ylab("Undiagnosed OUD / Total OUD") +
@@ -446,9 +451,9 @@ ggplot()+
     geom_segment(data = data1, mapping = aes(x = p_Tb_2018, y = p_ODF_2018, 
                            xend = p_Tb_2019, yend = p_ODF_2019), linewidth = .2) +
   scale_x_continuous(breaks=c(0.005, 0.010, 0.015, 0.020),
-                     labels = c("5", "10", "15", "20")) +
+                     labels = c("500", "1000", "1500", "2000")) +
   scale_y_continuous(breaks=c(0.0001, 0.0003, 0.0005, 0.0007),
-                     labels = c("0.2", "0.3", "0.5", "0.7")) +
+                     labels = c("20", "30", "50", "70")) +
   theme_bw() +
   theme(aspect.ratio = 0.65,
         legend.position = "right",
@@ -463,6 +468,7 @@ ggplot()+
         )
 ```
 
+##Supplement
 ```{r }
 # increasing
 data1 <- county_est |> 
@@ -511,9 +517,9 @@ ggplot()+
     geom_segment(data = data1, mapping = aes(x = p_Tb_2018, y = p_ODF_2018, 
                            xend = p_Tb_2019, yend = p_ODF_2019), linewidth = .2) +
     scale_x_continuous(breaks=c(0.005, 0.010, 0.015, 0.020),
-                     labels = c("5", "10", "15", "20")) +
+                     labels = c("500", "1000", "1500", "2000")) +
     scale_y_continuous(breaks=c(0.0000, 0.0002, 0.0004, 0.0006),
-                     labels = c("0.0", "0.2", "0.4", "0.6"))+
+                     labels = c("0", "20", "40", "60"))+  #the number/100k
   theme_bw() +
   theme(aspect.ratio = 0.65,
         legend.position = "right",
@@ -541,7 +547,7 @@ oud_est_data |>
   geom_boxplot(outlier.shape = 21, width= 0.2) + 
   scale_colour_manual(name = "Sex", values= c("darkblue", "darkred"))+ 
   #scale_fill_brewer(palette = "Dark2", name = "Sex") +
-  labs(title="Variability of Undiagnosed OUD Among the Total OUD Estimate",
+  labs(title="Variability of Percentage Undiagnosed OUD",
        subtitle = "Three-Year Average by Demographic Groups",
        caption = "The denominator for this rate is the proportion of the total OUD estimate")+
   xlab("") +
